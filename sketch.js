@@ -1,94 +1,48 @@
-var data,g;
-var selected="-1",moveable=false,circlesize=20,fontsize=12;
+var graph,mapp,img,butg,butm,font;
+var mxwh,mnwh,w,sw,sh,per1=0,per2=0;
 
-function drawVector(x1,y1,x2,y2){
-	push();
-	translate(x1,y1);
-	rotate(atan2(y2-y1,x2-x1));
-	length=sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1));
-	line(0,0,length,0);
-	fill(255);
-	triangle(length/2+5,0,length/2-5,5,length/2-5,-5);
-	pop();
-}
-
-class graph{
-	constructor(){
-		this.day=0;
-		this.people={};
-		this.parent=[];
-	}
-	import(data){
-		this.people=data;
-		for(let k of Object.keys(this.people)){
-			if(this.people[k].from==null) this.people[k].from=[];
-			if(this.people[k].infect==null) this.people[k].infect=[];
-			else if(this.people[k].from.length==0) this.parent.push(k);
-			if(this.people[k].pos==null) this.people[k].pos={"x":random(1),"y":random(1)};
-		}
-	}
-	show(x,y){
-		fill(255);
-		var hovering="-1";
-		for(let k of Object.keys(this.people)){
-			var now=this.people[k];
-			strokeWeight(2); stroke(255);
-			for(let kk of now.infect){
-				var child=this.people[kk];
-				if(child!=null) drawVector(now.pos.x*width,now.pos.y*height,child.pos.x*width,child.pos.y*height);
-			}
-			if(hovering=="-1") if((now.pos.x*width-x)*(now.pos.x*width-x)+(now.pos.y*height-y)*(now.pos.y*height-y)<circlesize*circlesize) hovering=k;
-		}
-		noStroke();
-		fill(255,128,128);
-		for(let k of Object.keys(this.people)){
-			var now=this.people[k];
-			ellipse(now.pos.x*width,now.pos.y*height,circlesize);
-		}
-		for(let k of Object.keys(this.people)){
-			var now=this.people[k];
-			text(k,now.pos.x*width,now.pos.y*height-circlesize);
-		}
-		if(hovering!="-1"){
-			var tw=textWidth(this.people[hovering].name),th=fontsize;
-			fill(255,255,255,196);
-			rect(this.people[hovering].pos.x*width-tw/2-3,this.people[hovering].pos.y*height-th/2+circlesize-3,tw+6,th+6,3);
-			fill(0);
-			text(this.people[hovering].name,this.people[hovering].pos.x*width,this.people[hovering].pos.y*height+circlesize);
-		}
-	}
-	save(){
-		saveJSON(this.people,"data.json");
-	}
+function hitormiss(x,y,wi,h,mx,my){
+	return((x<mx&&mx<x+wi)&&(y<my&&my<y+h));
 }
 
 function preload(){
-	data=loadJSON("data.json");
+	graph=loadImage("graph.png");
+	mapp=loadImage("map.png");
+	font=loadFont("Kanit.ttf");
 }
 
 function setup() {
 	createCanvas(windowWidth, windowHeight);
-	textAlign(CENTER,CENTER);
+	mxwh=(width>height) ? width : height;
+	mnwh=(width<height) ? width : height;
+	w=width>height;
+	sw=mxwh*2/5; sh=mnwh-mxwh/10; if(!w){ var t=sw; sw=sh; sh=t; }
 
-	g=new graph(); g.import(data);
+	butg=createA("graph/","").position(mxwh/20,mxwh/20).style("width",sw+"px").style("height",sh+"px");
+	butm=createA("map/","").position(mxwh/20*((w)?11:1),mxwh/20*((w)?1:11)).style("width",sw+"px").style("height",sh+"px");
+
+	textAlign(CENTER,CENTER); textSize(48); textFont(font);
+	noStroke();
 }
 
 function draw() {
-	background(32);
+	background(48);
 
-	g.show(mouseX,mouseY);
-}
-
-function mousePressed(){
-	selected="-1";
-	for(let pp of Object.keys(g.people)){
-		var p=g.people[pp];
-		if((p.pos.x*width-mouseX)*(p.pos.x*width-mouseX)+(p.pos.y*height-mouseY)*(p.pos.y*height-mouseY)<circlesize*circlesize){ selected=pp; break; }
+	//over y
+	if(sw>sh){
+		image(graph,mxwh/20,mxwh/20,sw,sh,0,270-sh/sw*270,540,sh/sw*540);
+		image(mapp,mxwh/20*((w)?11:1),mxwh/20*((w)?1:11),sw,sh,0,270-sh/sw*270,540,sh/sw*540);
 	}
-}
-
-function mouseDragged(){
-	if(selected!="-1" && moveable){
-		g.people[selected].pos.x=mouseX/width; g.people[selected].pos.y=mouseY/height; 
+	//over x
+	else{
+		image(graph,mxwh/20,mxwh/20,sw,sh,270-sw/sh*270,0,sw/sh*540,540);
+		image(mapp,mxwh/20*((w)?11:1),mxwh/20*((w)?1:11),sw,sh,270-sw/sh*270,0,sw/sh*540,540);
 	}
+	fill(0,0,0,per1/100*128); rect(mxwh/20,mxwh/20,sw,sh); fill(255,255,255,per1/100*255); text("Graph",mxwh/20+sw/2,mxwh/20+sh/2);
+	fill(0,0,0,per2/100*128); rect(mxwh/20*((w)?11:1),mxwh/20*((w)?1:11),sw,sh); fill(255,255,255,per2/100*255); text("Map",mxwh/20*((w)?11:1)+sw/2,mxwh/20*((w)?1:11)+sh/2);
+
+	if(hitormiss(mxwh/20,mxwh/20,sw,sh,mouseX,mouseY) && per1<100) per1+=5;
+	else if(per1>0) per1-=5;
+	if(hitormiss(mxwh/20*((w)?11:1),mxwh/20*((w)?1:11),sw,sh,mouseX,mouseY) && per2<100) per2+=5;
+	else if(per2>0) per2-=5;
 }
